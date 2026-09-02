@@ -13,6 +13,8 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:130px;}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px;}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}}
 .screen{display:none;min-height:100vh;}.screen.active{display:block;}
 .btn{padding:10px 18px;border:none;border-radius:10px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;}
 .btn-gold{background:var(--gold);color:#000;}.btn-gold:hover{background:#ffd733;}
@@ -32,11 +34,13 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 
 /* HERO */
 .hero{background:linear-gradient(170deg,#1a0c00,#0c0500 60%,#000);padding:28px 16px 20px;text-align:center;border-bottom:2px solid var(--border);position:relative;overflow:hidden;}
-.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,color-mix(in srgb, var(--gold) 8%, transparent),transparent 70%);pointer-events:none;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,color-mix(in srgb, var(--gold) 8%, transparent),transparent 70%);pointer-events:none;animation:breathe 6s ease-in-out infinite;}
+@keyframes breathe{0%,100%{opacity:.7;}50%{opacity:1;}}
+@keyframes riseIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 .hero-badge{display:inline-block;background:var(--red);color:#fff;font-size:9px;font-weight:700;letter-spacing:3px;padding:3px 12px;border-radius:20px;margin-bottom:8px;text-transform:uppercase;}
-.hero-title{font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--gold);letter-spacing:3px;line-height:1;text-shadow:0 0 40px color-mix(in srgb, var(--gold) 30%, transparent);}
-.hero-sub{font-size:12px;color:var(--muted);margin-top:4px;}
-.hero-pills{display:flex;justify-content:center;gap:8px;margin-top:14px;flex-wrap:wrap;}
+.hero-title{font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--gold);letter-spacing:3px;line-height:1;text-shadow:0 0 40px color-mix(in srgb, var(--gold) 30%, transparent);position:relative;animation:riseIn .5s ease-out .05s both;}
+.hero-sub{font-size:12px;color:var(--muted);margin-top:4px;position:relative;animation:riseIn .5s ease-out .12s both;}
+.hero-pills{display:flex;justify-content:center;gap:8px;margin-top:14px;flex-wrap:wrap;position:relative;animation:riseIn .5s ease-out .2s both;}
 .hero-pill{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;}
 .hero-pill span{color:var(--gold);font-weight:700;}
 .closed-banner{display:none;background:rgba(230,57,70,0.15);border:1px solid rgba(230,57,70,0.3);border-radius:10px;padding:10px 14px;margin:12px 14px 0;text-align:center;font-size:12px;font-weight:700;color:var(--red);}
@@ -71,6 +75,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 .prod-price small{font-size:12px;color:var(--muted);}
 .add-btn{width:30px;height:30px;background:var(--gold);border:none;border-radius:8px;color:#000;font-size:20px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;}
 .add-btn:hover{background:#ffd733;transform:scale(1.1);}
+.add-btn:active{transform:scale(.9);}
 
 /* CART BAR */
 .cart-bar{position:fixed;bottom:0;left:0;right:0;z-index:200;padding:10px 14px;background:rgba(12,12,12,.98);border-top:1px solid var(--border);backdrop-filter:blur(12px);display:flex;gap:10px;align-items:center;}
@@ -271,6 +276,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 .sync-dot.on{background:var(--green);animation:pulse 1.5s infinite;}
 .sync-dot.off{background:var(--red);}
 </style>
+<script src="https://sdk.mercadopago.com/js/v2"></script>
 </head>
 <body>
 
@@ -328,6 +334,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
   <div class="adm-tabs">
     <div class="adm-tab active" onclick="admTab('dash',this)">📊 Dashboard</div>
     <div class="adm-tab" onclick="admTab('pedidos',this)">📦 Pedidos <span class="notif-badge" id="notifBadge" style="display:none">0</span></div>
+    <div class="adm-tab" onclick="admTab('vendas',this)">💰 Vendas</div>
     <div class="adm-tab" onclick="admTab('produtos',this)">🍺 Produtos</div>
     <div class="adm-tab" onclick="admTab('clientes',this)">👤 Clientes</div>
     <div class="adm-tab" onclick="admTab('cupons',this)">🎟️ Cupons</div>
@@ -370,6 +377,30 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
         </div>
       </div>
       <div id="admPedidos"></div>
+    </div>
+
+    <!-- VENDAS -->
+    <div class="adm-panel" id="panel-vendas">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="val" id="vendasHojeVal" style="font-size:22px;">R$ 0</div><div class="lbl">Hoje</div></div>
+        <div class="stat-card"><div class="val" id="vendasMesVal" style="font-size:22px;">R$ 0</div><div class="lbl">Este mês</div></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="val" id="vendasAnoVal" style="font-size:22px;">R$ 0</div><div class="lbl">Este ano</div></div>
+        <div class="stat-card"><div class="val" id="vendasTotalVal" style="font-size:22px;">R$ 0</div><div class="lbl">Total (tudo)</div></div>
+      </div>
+      <div class="form-card">
+        <h3>📅 Hoje</h3>
+        <div id="vendasHojeDetalhe"></div>
+      </div>
+      <div class="form-card">
+        <h3>🗓️ Este mês</h3>
+        <div id="vendasMesDetalhe"></div>
+      </div>
+      <div class="form-card" style="margin-bottom:0">
+        <h3>📆 Este ano</h3>
+        <div id="vendasAnoDetalhe"></div>
+      </div>
     </div>
 
     <!-- PRODUTOS -->
@@ -471,7 +502,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
         </div>
         <div class="field"><label>Access Token</label><input type="text" id="mpToken" placeholder="APP_USR-..."></div>
         <div class="field"><label>Public Key</label><input type="text" id="mpPublic" placeholder="APP_USR-..."></div>
-        <div class="field"><label>Chave PIX</label><input type="text" id="mpPixKey" placeholder="71984022740"></div>
+        <div class="field"><label>Chave PIX (usada só se o PIX automático falhar)</label><input type="text" id="mpPixKey" placeholder="71984022740"></div>
+        <div class="sep"></div>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">🤖 PIX automático (Cloud Functions) — opcional, mas gera QR code real e confirma o pagamento sozinho</p>
+        <div class="field"><label>URL da função "criar pagamento"</label><input type="text" id="mpCreateUrl" placeholder="https://....cloudfunctions.net/criarPagamentoPix"></div>
+        <div class="field"><label>URL da função "status do pagamento"</label><input type="text" id="mpStatusUrl" placeholder="https://....cloudfunctions.net/statusPagamentoPix"></div>
+        <div class="sep"></div>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">💳 Cartão online (opcional) — checkout seguro do Mercado Pago</p>
+        <div class="field"><label>URL da função "processar pagamento cartão"</label><input type="text" id="mpCardCreateUrl" placeholder="https://....workers.dev/processarPagamentoCartao"></div>
+        <p style="font-size:10px;color:var(--muted);margin-top:-4px;">⚠️ O campo "Public Key" acima é obrigatório pro formulário de cartão aparecer.</p>
         <div class="sep"></div>
         <div class="toggle-wrap"><label class="toggle"><input type="checkbox" id="mpEnabled" onchange="toggleMP()"><span class="toggle-slider"></span></label><div class="toggle-label">Ativar pagamento online</div></div>
         <div class="toggle-wrap"><label class="toggle"><input type="checkbox" id="mpPix"><span class="toggle-slider"></span></label><div class="toggle-label">PIX <span>Aprovação imediata</span></div></div>
@@ -581,22 +620,66 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
     <div class="modal-head"><h2>🏦 Pagar via PIX</h2><button class="close-btn" onclick="closeOverlay('pixOverlay')">✕</button></div>
     <div class="modal-body">
       <div class="pix-box">
-        <div class="pix-icon">🏦</div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Valor total</p>
-        <div class="pix-amount" id="pixAmount">R$ 0,00</div>
-        <p style="font-size:11px;color:var(--muted);margin:10px 0 4px;">Chave PIX — toque para copiar</p>
-        <div class="pix-key" id="pixKey" onclick="copyPix()">71984022740</div>
-        <p style="font-size:10px;color:var(--green);display:none" id="pixCopied">✅ Copiado!</p>
+        <div id="pixLoading">
+          <div class="pix-icon">⏳</div>
+          <p style="font-size:13px;color:var(--muted);">Gerando cobrança PIX...</p>
+        </div>
+        <div id="pixReady" style="display:none;">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Valor total</p>
+          <div class="pix-amount" id="pixAmount">R$ 0,00</div>
+          <img id="pixQrImg" style="width:200px;height:200px;margin:14px auto;display:block;border-radius:10px;background:#fff;padding:8px;">
+          <p style="font-size:11px;color:var(--muted);margin:10px 0 4px;">Ou copie o código PIX (copia e cola)</p>
+          <div class="pix-key" id="pixKey" style="word-break:break-all;font-size:10px;text-align:left;">—</div>
+          <button type="button" class="btn btn-gold btn-full" onclick="copyPix()" style="margin-top:8px;">📋 Copiar código PIX</button>
+          <p style="font-size:10px;color:var(--green);display:none;margin-top:6px;" id="pixCopied">✅ Copiado!</p>
+          <p id="pixStatusMsg" style="font-size:12px;color:var(--gold);margin-top:12px;">⏳ Aguardando pagamento...</p>
+        </div>
+        <div id="pixErro" style="display:none;">
+          <div class="pix-icon">⚠️</div>
+          <p style="font-size:13px;color:var(--red);margin-bottom:10px;" id="pixErroMsg">Não foi possível gerar o PIX automático.</p>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">Use a chave PIX manual abaixo:</p>
+          <div class="pix-key" id="pixKeyFallback" style="text-align:left;">—</div>
+          <button type="button" class="btn btn-gold btn-full" onclick="copyPixFallback()" style="margin-top:8px;">📋 Copiar chave PIX</button>
+        </div>
       </div>
-      <div class="pix-steps">
+      <div class="pix-steps" id="pixStepsManual">
         <div class="pix-step"><div class="num">1</div><div>Abra seu banco → escolha <strong>PIX</strong></div></div>
-        <div class="pix-step"><div class="num">2</div><div>Cole a chave copiada acima</div></div>
+        <div class="pix-step"><div class="num">2</div><div>Cole o código copiado acima</div></div>
         <div class="pix-step"><div class="num">3</div><div>Confirme o valor e pague</div></div>
-        <div class="pix-step"><div class="num">4</div><div>Envie o comprovante pelo WhatsApp</div></div>
+        <div class="pix-step"><div class="num">4</div><div>O pedido confirma automaticamente após o pagamento</div></div>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-green btn-full" onclick="sendWhatsAppFinal()">📲 Enviar pedido + comprovante</button>
+      <button class="btn btn-green btn-full" onclick="sendWhatsAppFinal()">📲 Já paguei — enviar pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: CARTÃO ONLINE -->
+<div class="overlay" id="cartaoOverlay" onclick="closeIfOut(event,'cartaoOverlay')">
+  <div class="modal">
+    <div class="modal-head"><h2>💳 Pagar com Cartão</h2><button class="close-btn" onclick="closeOverlay('cartaoOverlay')">✕</button></div>
+    <div class="modal-body">
+      <div class="pix-box" style="text-align:left;">
+        <div id="cartaoLoading" style="text-align:center;">
+          <div class="pix-icon">⏳</div>
+          <p style="font-size:13px;color:var(--muted);">Carregando formulário seguro...</p>
+        </div>
+        <div id="cartaoReady" style="display:none;">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:4px;text-align:center;">Valor total</p>
+          <div class="pix-amount" id="cartaoAmount" style="text-align:center;">R$ 0,00</div>
+          <div id="paymentBrickContainer" style="margin-top:14px;"></div>
+          <p id="cartaoStatusMsg" style="font-size:12px;color:var(--gold);margin-top:10px;text-align:center;display:none;">⏳ Processando pagamento...</p>
+        </div>
+        <div id="cartaoErro" style="display:none;text-align:center;">
+          <div class="pix-icon">⚠️</div>
+          <p style="font-size:13px;color:var(--red);margin-bottom:10px;" id="cartaoErroMsg">Não foi possível carregar o pagamento com cartão.</p>
+          <p style="font-size:11px;color:var(--muted);">Escolha "Cartão na entrega" ou tente novamente.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost btn-full" onclick="closeOverlay('cartaoOverlay')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1125,15 +1208,30 @@ function openCheckout(){
   document.getElementById('geoResult').innerHTML='';
   document.getElementById('cepInput').value='';
   document.getElementById('cliBairro').innerHTML='<option value="">Selecione o bairro...</option>'+bairros.map(b=>`<option value="${b.name}">${b.name}${b.taxa>0?' — '+fmt(b.taxa):' — Grátis'}</option>`).join('');
-  let payHtml='<label class="pay-option"><input type="radio" name="pay" value="na_entrega" checked><span>💵 Pagar na entrega <small>Dinheiro, PIX ou cartão</small></span></label>';
-  if(cfg.mpEnabled&&cfg.mpPix)payHtml+='<label class="pay-option"><input type="radio" name="pay" value="pix"><span>🏦 PIX <small>Aprovação imediata</small></span></label>';
-  if(cfg.mpEnabled&&cfg.mpCard)payHtml+='<label class="pay-option"><input type="radio" name="pay" value="card"><span>💳 Cartão <small>Até 12x</small></span></label>';
+  let payHtml='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">💵 Pagar na entrega</div>';
+  payHtml+='<label class="pay-option"><input type="radio" name="pay" value="entrega_dinheiro" checked><span>💵 Dinheiro</span></label>';
+  payHtml+='<label class="pay-option"><input type="radio" name="pay" value="entrega_pix"><span>🏦 PIX <small>Chave mostrada ao entregador</small></span></label>';
+  payHtml+='<label class="pay-option"><input type="radio" name="pay" value="entrega_debito"><span>💳 Cartão Débito <small>Maquininha na entrega</small></span></label>';
+  payHtml+='<label class="pay-option"><input type="radio" name="pay" value="entrega_credito"><span>💳 Cartão Crédito <small>Maquininha na entrega</small></span></label>';
+  if(cfg.mpEnabled&&(cfg.mpPix||cfg.mpCard)){
+    payHtml+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;">⚡ Pagar agora online</div>';
+    if(cfg.mpPix)payHtml+='<label class="pay-option"><input type="radio" name="pay" value="pix"><span>🏦 PIX <small>QR code · confirmação automática</small></span></label>';
+    if(cfg.mpCard)payHtml+='<label class="pay-option"><input type="radio" name="pay" value="cartao_online"><span>💳 Cartão crédito/débito <small>Checkout seguro Mercado Pago</small></span></label>';
+  }
   document.getElementById('payOptions').innerHTML=payHtml;
   document.getElementById('checkSummary').innerHTML=cart.map(i=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span>${i.qty}x ${i.name}</span><span style="color:var(--gold);font-weight:700">${fmt(i.price*i.qty)}</span></div>`).join('')+(cartDisc()>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;color:var(--green)"><span>🎟️ Desconto</span><span>-${fmt(cartDisc())}</span></div>`:'');
   document.getElementById('checkTotal').textContent=fmt(cartGrandTotal());
   openOverlay('checkOverlay');
 }
 
+const PAY_LABELS={
+  entrega_dinheiro:'💵 Dinheiro (na entrega)',
+  entrega_pix:'🏦 PIX (na entrega)',
+  entrega_debito:'💳 Débito (na entrega)',
+  entrega_credito:'💳 Crédito (na entrega)',
+  pix:'🏦 PIX (pago online)',
+  cartao_online:'💳 Cartão (pago online)'
+};
 async function finalizarPedido(){
   if(!soundCtx)initSound();
   const name=document.getElementById('cliName').value.trim();
@@ -1149,9 +1247,10 @@ async function finalizarPedido(){
   const clientId=ex?ex.id:Date.now();
   await fsSet('clients',clientId,{id:clientId,name,phone,addr,bairro,comp,createdAt:ex?ex.createdAt:new Date().toLocaleDateString('pt-BR')});
   const pedId='#'+String(Date.now()).slice(-6);
-  const pay=document.querySelector('input[name="pay"]:checked')?.value||'na_entrega';
-  const payLabel={'na_entrega':'💵 Na entrega','pix':'🏦 PIX','card':'💳 Cartão'}[pay];
-  const pedido={id:pedId,_ts:Date.now(),name,phone,addr:`${bairro?bairro+' — ':''}${addr}${comp?' ('+comp+')':''}`,items:[...cart],sub:cartSub(),disc:cartDisc(),taxa:taxaEntrega,total:cartGrandTotal(),pay:payLabel,status:'aguardando',createdAt:new Date().toLocaleString('pt-BR')};
+  const pay=document.querySelector('input[name="pay"]:checked')?.value||'entrega_dinheiro';
+  const payLabel=PAY_LABELS[pay]||pay;
+  const online=pay==='pix'||pay==='cartao_online';
+  const pedido={id:pedId,_ts:Date.now(),name,phone,addr:`${bairro?bairro+' — ':''}${addr}${comp?' ('+comp+')':''}`,items:[...cart],sub:cartSub(),disc:cartDisc(),taxa:taxaEntrega,total:cartGrandTotal(),pay:payLabel,online,status:'aguardando',createdAt:new Date().toLocaleString('pt-BR')};
   await fsSet('pedidos',pedId,pedido);
   const cfg=getCfg();
   let msg=`${cfg.emoji||'🍺'} *Pedido ${pedId} — ${cfg.nome||'Nova Opção'}*\n\n`;
@@ -1163,24 +1262,177 @@ async function finalizarPedido(){
   currentPedidoMsg=msg;
   if(pay==='pix'&&cfg.mpEnabled){
     closeOverlay('checkOverlay');
-    document.getElementById('pixAmount').textContent=fmt(cartGrandTotal());
-    document.getElementById('pixKey').textContent=cfg.mpPixKey||'71984022740';
     openOverlay('pixOverlay');
+    iniciarPixAutomatico(pedId,cartGrandTotal(),cfg);
+  } else if(pay==='cartao_online'&&cfg.mpEnabled){
+    closeOverlay('checkOverlay');
+    openOverlay('cartaoOverlay');
+    iniciarCartaoOnline(pedId,cartGrandTotal(),cfg);
   } else {
     window.open('https://wa.me/'+(cfg.wa||'5571984022740')+'?text='+encodeURIComponent(msg),'_blank');
     finishOrder();
   }
 }
+let pixPollInterval=null;
+function pararPollingPix(){if(pixPollInterval){clearInterval(pixPollInterval);pixPollInterval=null;}}
+async function iniciarPixAutomatico(pedId,total,cfg){
+  document.getElementById('pixLoading').style.display='block';
+  document.getElementById('pixReady').style.display='none';
+  document.getElementById('pixErro').style.display='none';
+  document.getElementById('pixAmount').textContent=fmt(total);
+  if(!cfg.mpCreateUrl){
+    mostrarPixFallback(cfg,'PIX automático não configurado.');
+    return;
+  }
+  try{
+    const resp=await fetch(cfg.mpCreateUrl,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({valor:total,descricao:`Pedido ${pedId}`,referencia:pedId})
+    });
+    const data=await resp.json();
+    if(!resp.ok||data.erro){
+      mostrarPixFallback(cfg,data.erro||'Erro ao gerar PIX automático.');
+      return;
+    }
+    document.getElementById('pixLoading').style.display='none';
+    document.getElementById('pixReady').style.display='block';
+    document.getElementById('pixQrImg').src=`data:image/png;base64,${data.qrCodeBase64}`;
+    document.getElementById('pixKey').textContent=data.qrCode;
+    fsSet('pedidos',pedId,{mpPaymentId:data.id});
+    pararPollingPix();
+    pixPollInterval=setInterval(()=>checarStatusPix(data.id,pedId,cfg),5000);
+  }catch(e){
+    mostrarPixFallback(cfg,'Erro de conexão ao gerar PIX.');
+  }
+}
+async function checarStatusPix(paymentId,pedId,cfg){
+  try{
+    const resp=await fetch(`${cfg.mpStatusUrl}?id=${paymentId}`);
+    const data=await resp.json();
+    if(data.status==='approved'){
+      pararPollingPix();
+      document.getElementById('pixStatusMsg').textContent='✅ Pagamento confirmado!';
+      document.getElementById('pixStatusMsg').style.color='var(--green)';
+      await fsSet('pedidos',pedId,{status:'confirmado'});
+      showToast('✅ Pagamento PIX aprovado!');
+      setTimeout(()=>{closeOverlay('pixOverlay');finishOrder();},1500);
+    }
+  }catch(e){/* mantém tentando na próxima rodada */}
+}
+function mostrarPixFallback(cfg,motivo){
+  pararPollingPix();
+  document.getElementById('pixLoading').style.display='none';
+  document.getElementById('pixReady').style.display='none';
+  document.getElementById('pixErro').style.display='block';
+  document.getElementById('pixErroMsg').textContent=motivo;
+  document.getElementById('pixKeyFallback').textContent=cfg.mpPixKey||'—';
+}
+// ═══════ CARTÃO ONLINE (Payment Brick — embutido no site) ═══════
+let paymentBrickController=null,cartaoPedId=null;
+async function iniciarCartaoOnline(pedId,total,cfg){
+  document.getElementById('cartaoLoading').style.display='block';
+  document.getElementById('cartaoReady').style.display='none';
+  document.getElementById('cartaoErro').style.display='none';
+  document.getElementById('cartaoAmount').textContent=fmt(total);
+  cartaoPedId=pedId;
+  if(!cfg.mpPublic){
+    mostrarCartaoErro('Chave pública do Mercado Pago não configurada (ADM → Pagamento → Public Key).');
+    return;
+  }
+  if(!cfg.mpCardCreateUrl){
+    mostrarCartaoErro('Função de processar cartão não configurada.');
+    return;
+  }
+  if(typeof MercadoPago==='undefined'){
+    mostrarCartaoErro('Não foi possível carregar o formulário de pagamento. Verifique sua conexão.');
+    return;
+  }
+  try{
+    const mp=new MercadoPago(cfg.mpPublic,{locale:'pt-BR'});
+    const bricksBuilder=mp.bricks();
+    if(paymentBrickController){try{paymentBrickController.unmount();}catch(e){}}
+    document.getElementById('paymentBrickContainer').innerHTML='';
+    paymentBrickController=await bricksBuilder.create('payment','paymentBrickContainer',{
+      initialization:{amount:total},
+      customization:{
+        paymentMethods:{creditCard:'all',debitCard:'all',ticket:'excluded',bankTransfer:'excluded',mercadoPago:'excluded'}
+      },
+      callbacks:{
+        onReady:()=>{
+          document.getElementById('cartaoLoading').style.display='none';
+          document.getElementById('cartaoReady').style.display='block';
+        },
+        onSubmit:({selectedPaymentMethod,formData})=>{
+          return new Promise(async(resolve,reject)=>{
+            document.getElementById('cartaoStatusMsg').style.display='block';
+            document.getElementById('cartaoStatusMsg').textContent='⏳ Processando pagamento...';
+            document.getElementById('cartaoStatusMsg').style.color='var(--gold)';
+            try{
+              const resp=await fetch(cfg.mpCardCreateUrl,{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({...formData,descricao:`Pedido ${pedId}`,referencia:pedId})
+              });
+              const data=await resp.json();
+              if(!resp.ok||data.erro){
+                document.getElementById('cartaoStatusMsg').textContent='❌ '+(data.erro||'Pagamento recusado.');
+                document.getElementById('cartaoStatusMsg').style.color='var(--red)';
+                reject();return;
+              }
+              if(data.status==='approved'){
+                document.getElementById('cartaoStatusMsg').textContent='✅ Pagamento aprovado!';
+                document.getElementById('cartaoStatusMsg').style.color='var(--green)';
+                await fsSet('pedidos',pedId,{status:'confirmado'});
+                showToast('✅ Pagamento aprovado!');
+                setTimeout(()=>{closeOverlay('cartaoOverlay');finishOrder();},1500);
+                resolve();
+              }else if(data.status==='in_process'){
+                document.getElementById('cartaoStatusMsg').textContent='⏳ Pagamento em análise — você será avisado assim que aprovar.';
+                document.getElementById('cartaoStatusMsg').style.color='var(--gold)';
+                setTimeout(()=>{closeOverlay('cartaoOverlay');finishOrder();},2000);
+                resolve();
+              }else{
+                document.getElementById('cartaoStatusMsg').textContent='❌ Pagamento recusado. Tente outro cartão.';
+                document.getElementById('cartaoStatusMsg').style.color='var(--red)';
+                reject();
+              }
+            }catch(e){
+              document.getElementById('cartaoStatusMsg').textContent='❌ Erro de conexão ao processar pagamento.';
+              document.getElementById('cartaoStatusMsg').style.color='var(--red)';
+              reject();
+            }
+          });
+        },
+        onError:(err)=>{console.error(err);}
+      }
+    });
+  }catch(e){
+    mostrarCartaoErro('Erro ao carregar o formulário de pagamento.');
+  }
+}
+function mostrarCartaoErro(motivo){
+  document.getElementById('cartaoLoading').style.display='none';
+  document.getElementById('cartaoReady').style.display='none';
+  document.getElementById('cartaoErro').style.display='block';
+  document.getElementById('cartaoErroMsg').textContent=motivo;
+}
+function copyPixFallback(){
+  const cfg=getCfg();
+  navigator.clipboard.writeText(cfg.mpPixKey||'').catch(()=>{});
+  showToast('✅ Chave PIX copiada!');
+}
 function sendWhatsAppFinal(){
   const cfg=getCfg();
   window.open('https://wa.me/'+(cfg.wa||'5571984022740')+'?text='+encodeURIComponent(currentPedidoMsg+'\n\n📎 Comprovante PIX 👆'),'_blank');
+  pararPollingPix();
   closeOverlay('pixOverlay');finishOrder();
 }
 function copyPix(){
-  const cfg=getCfg();
-  navigator.clipboard.writeText(cfg.mpPixKey||'71984022740').catch(()=>{});
+  const el=document.getElementById('pixKey');
+  navigator.clipboard.writeText(el.textContent||'').catch(()=>{});
   document.getElementById('pixCopied').style.display='block';
-  showToast('✅ Chave PIX copiada!');
+  showToast('✅ Código PIX copiado!');
 }
 function finishOrder(){
   cart=[];activeCupom=null;taxaEntrega=0;
@@ -1191,9 +1443,9 @@ function finishOrder(){
 
 // ═══════ IMPRIMIR PEDIDO ═══════
 function pagamentoStatusLabel(p){
-  // Pagamento na entrega ainda não foi recebido; PIX/Cartão via MP já é considerado pago
-  if(p.pay&&p.pay.includes('Na entrega'))return '⏳ AGUARDANDO PAGAMENTO NA ENTREGA';
-  return '✅ PEDIDO CONFIRMADO — PAGO';
+  // Pagamentos "na entrega" ainda não foram recebidos; pagamentos online já são considerados pagos
+  if(p.online)return '✅ PEDIDO CONFIRMADO — PAGO';
+  return '⏳ AGUARDANDO PAGAMENTO NA ENTREGA';
 }
 function buildTicketHtml(p){
   return `
@@ -1290,7 +1542,7 @@ function openOverlay(id){
   if(id==='horarioOverlay')openHorarioModal();
   if(id==='avalOverlay')openAvalModal();
 }
-function closeOverlay(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+function closeOverlay(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';if(id==='pixOverlay')pararPollingPix();if(id==='cartaoOverlay'&&paymentBrickController){try{paymentBrickController.unmount();}catch(e){}paymentBrickController=null;}}
 function closeIfOut(e,id){if(e.target===document.getElementById(id))closeOverlay(id);}
 function openHorarioModal(){
   const h=getHorarios();
@@ -1313,7 +1565,7 @@ function admTab(name,btn){
   document.getElementById('panel-'+name).classList.add('active');btn.classList.add('active');
   // zerar badge de pedidos
   if(name==='pedidos'){const b=document.getElementById('notifBadge');if(b)b.style.display='none';}
-  const fn={dash:renderDash,pedidos:renderPedidos,produtos:renderAdmProds,clientes:renderAdmClients,cupons:renderAdmCupons,entrega:()=>{renderAdmBairros();loadKmSettings();},horarios:renderHorarioForm,pagamento:loadMP,config:loadConfig};
+  const fn={dash:renderDash,pedidos:renderPedidos,vendas:renderVendas,produtos:renderAdmProds,clientes:renderAdmClients,cupons:renderAdmCupons,entrega:()=>{renderAdmBairros();loadKmSettings();},horarios:renderHorarioForm,pagamento:loadMP,config:loadConfig};
   if(fn[name])fn[name]();
 }
 
@@ -1354,6 +1606,39 @@ function renderPedidos(){
     </div>`).join('');
 }
 const statusLabel=s=>({'aguardando':'⏳ Aguardando','confirmado':'✅ Confirmado','preparo':'🍺 Em Preparo','entrega':'🛵 Saiu','entregue':'🎉 Entregue'}[s]||s);
+
+// ═══════ VENDAS ═══════
+function vendasResumoDoPeriodo(pedidos,startTs){
+  const items=pedidos.filter(p=>(p._ts||0)>=startTs);
+  const total=items.reduce((s,p)=>s+(p.total||0),0);
+  const porPagamento={};
+  items.forEach(p=>{const k=p.pay||'—';if(!porPagamento[k])porPagamento[k]={qtd:0,total:0};porPagamento[k].qtd++;porPagamento[k].total+=p.total||0;});
+  return{qtd:items.length,total,porPagamento};
+}
+function vendasDetalheHtml(resumo){
+  const linhas=Object.entries(resumo.porPagamento).sort((a,b)=>b[1].total-a[1].total);
+  if(!linhas.length)return'<p style="color:var(--muted);font-size:12px;">Nenhuma venda ainda.</p>';
+  return`<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${resumo.qtd} pedido${resumo.qtd!==1?'s':''} · Total ${fmt(resumo.total)}</div>`+
+    linhas.map(([label,d])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px;"><span>${label}</span><span style="color:var(--gold);font-weight:700;">${fmt(d.total)} <span style="color:var(--muted);font-weight:400;">(${d.qtd})</span></span></div>`).join('');
+}
+function renderVendas(){
+  const pedidos=getPedidos();
+  const now=new Date();
+  const startHoje=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+  const startMes=new Date(now.getFullYear(),now.getMonth(),1).getTime();
+  const startAno=new Date(now.getFullYear(),0,1).getTime();
+  const hoje=vendasResumoDoPeriodo(pedidos,startHoje);
+  const mes=vendasResumoDoPeriodo(pedidos,startMes);
+  const ano=vendasResumoDoPeriodo(pedidos,startAno);
+  const total=vendasResumoDoPeriodo(pedidos,0);
+  document.getElementById('vendasHojeVal').textContent=fmt(hoje.total);
+  document.getElementById('vendasMesVal').textContent=fmt(mes.total);
+  document.getElementById('vendasAnoVal').textContent=fmt(ano.total);
+  document.getElementById('vendasTotalVal').textContent=fmt(total.total);
+  document.getElementById('vendasHojeDetalhe').innerHTML=vendasDetalheHtml(hoje);
+  document.getElementById('vendasMesDetalhe').innerHTML=vendasDetalheHtml(mes);
+  document.getElementById('vendasAnoDetalhe').innerHTML=vendasDetalheHtml(ano);
+}
 function updateStatus(id,status){const p=getPedidos().find(x=>x.id===id);if(p){p.status=status;fsSet('pedidos',id,{status});}renderPedidos();manageAlarm();showToast(status==='confirmado'?'✅ Pedido aceito!':'✅ Status atualizado!');}
 function notifyClient(id){
   const p=getPedidos().find(x=>x.id===id);if(!p)return;
@@ -1482,6 +1767,9 @@ function loadMP(){
   document.getElementById('mpToken').value=cfg.mpToken||'';
   document.getElementById('mpPublic').value=cfg.mpPublic||'';
   document.getElementById('mpPixKey').value=cfg.mpPixKey||'';
+  document.getElementById('mpCreateUrl').value=cfg.mpCreateUrl||'';
+  document.getElementById('mpStatusUrl').value=cfg.mpStatusUrl||'';
+  document.getElementById('mpCardCreateUrl').value=cfg.mpCardCreateUrl||'';
   document.getElementById('mpEnabled').checked=cfg.mpEnabled||false;
   document.getElementById('mpPix').checked=cfg.mpPix!==false;
   document.getElementById('mpCard').checked=cfg.mpCard||false;
@@ -1496,6 +1784,9 @@ function saveMP(){
     mpToken:document.getElementById('mpToken').value.trim(),
     mpPublic:document.getElementById('mpPublic').value.trim(),
     mpPixKey:document.getElementById('mpPixKey').value.trim(),
+    mpCreateUrl:document.getElementById('mpCreateUrl').value.trim(),
+    mpStatusUrl:document.getElementById('mpStatusUrl').value.trim(),
+    mpCardCreateUrl:document.getElementById('mpCardCreateUrl').value.trim(),
     mpEnabled:document.getElementById('mpEnabled').checked,
     mpPix:document.getElementById('mpPix').checked,
     mpCard:document.getElementById('mpCard').checked
@@ -1549,7 +1840,7 @@ window.addEventListener('scroll',()=>{
 Object.assign(window,{
   showShop,showAdm,showAdmPanel,doLogin,admTab,toggleSound,
   scrollSec,addCart,remCart,applyCupom,updateTaxaBairro,openCheckout,finalizarPedido,
-  sendWhatsAppFinal,copyPix,imprimirPedido,trackPedido,pickStar,submitAval,
+  sendWhatsAppFinal,copyPix,copyPixFallback,imprimirPedido,trackPedido,pickStar,submitAval,
   openOverlay,closeOverlay,closeIfOut,updateStatus,notifyClient,clearPedidos,
   saveProd,editProd,delProd,resetProdForm,exportClients,saveCupom,delCupom,
   saveBairro,delBairro,saveHorarios,toggleMP,saveMP,saveWA,saveConfig,changePass,
