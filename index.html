@@ -1430,14 +1430,15 @@ async function iniciarCartaoOnline(pedId,total,cfg){
         onError:(err)=>{
           console.error(err);
           if(cartaoTimeoutId)clearTimeout(cartaoTimeoutId);
-          mostrarCartaoErro('Erro ao carregar o formulário de pagamento. Confira a Public Key.');
+          const detalhe=err&&(err.message||err.cause||JSON.stringify(err));
+          mostrarCartaoErro('Erro do Mercado Pago: '+(detalhe||'motivo desconhecido')+'. Confira a Public Key.');
         }
       }
     });
   }catch(e){
     console.error(e);
     if(cartaoTimeoutId)clearTimeout(cartaoTimeoutId);
-    mostrarCartaoErro('Erro ao carregar o formulário de pagamento.');
+    mostrarCartaoErro('Erro ao carregar o formulário: '+(e&&e.message?e.message:'motivo desconhecido')+'. Confira a Public Key.');
   }
 }
 function mostrarCartaoErro(motivo){
