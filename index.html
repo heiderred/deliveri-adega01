@@ -1379,7 +1379,7 @@ async function iniciarCartaoOnline(pedId,total,cfg){
     paymentBrickController=await bricksBuilder.create('payment','paymentBrickContainer',{
       initialization:{amount:total},
       customization:{
-        paymentMethods:{creditCard:'all',debitCard:'all',ticket:'excluded',bankTransfer:'excluded',mercadoPago:'excluded'}
+        paymentMethods:{creditCard:'all',debitCard:'all'}
       },
       callbacks:{
         onReady:()=>{
