@@ -661,13 +661,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
     <div class="modal-head"><h2>💳 Pagar com Cartão</h2><button class="close-btn" onclick="closeOverlay('cartaoOverlay')">✕</button></div>
     <div class="modal-body">
       <div class="pix-box" style="text-align:left;">
-        <div id="cartaoLoading" style="text-align:center;">
-          <div class="pix-icon">⏳</div>
-          <p style="font-size:13px;color:var(--muted);">Carregando formulário seguro...</p>
-        </div>
-        <div id="cartaoReady" style="display:none;">
+        <div id="cartaoReady">
           <p style="font-size:12px;color:var(--muted);margin-bottom:4px;text-align:center;">Valor total</p>
           <div class="pix-amount" id="cartaoAmount" style="text-align:center;">R$ 0,00</div>
+          <p id="cartaoLoadingMsg" style="text-align:center;font-size:13px;color:var(--muted);margin:14px 0;">⏳ Carregando formulário seguro...</p>
           <div id="paymentBrickContainer" style="margin-top:14px;"></div>
           <p id="cartaoStatusMsg" style="font-size:12px;color:var(--gold);margin-top:10px;text-align:center;display:none;">⏳ Processando pagamento...</p>
         </div>
@@ -1146,16 +1143,35 @@ function useMyLocation(){
   if(!navigator.geolocation){showToast('⚠️ Seu navegador não suporta localização!');return;}
   const btn=document.getElementById('geoBtn'),res=document.getElementById('geoResult');
   btn.disabled=true;btn.textContent='📍 Localizando...';
-  navigator.geolocation.getCurrentPosition(pos=>{
+  navigator.geolocation.getCurrentPosition(async pos=>{
     const cfg=getCfg();
     const dist=haversineKm(cfg.storeLat,cfg.storeLng,pos.coords.latitude,pos.coords.longitude);
     applyDistanceFee(dist,res);
     btn.disabled=false;btn.textContent='📍 Recalcular localização';
+    await preencherEnderecoPorCoordenadas(pos.coords.latitude,pos.coords.longitude,res);
   },err=>{
     btn.disabled=false;btn.textContent='📍 Usar minha localização para calcular o frete';
     res.innerHTML='❌ Não foi possível obter sua localização. Tente o CEP ou escolha o bairro manualmente.';
     showToast('⚠️ Permissão de localização negada ou indisponível');
   },{enableHighAccuracy:true,timeout:10000});
+}
+async function preencherEnderecoPorCoordenadas(lat,lon,res){
+  try{
+    const geo=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`).then(r=>r.json());
+    const a=geo.address||{};
+    const rua=a.road||a.pedestrian||a.residential||'';
+    const bairro=a.suburb||a.neighbourhood||a.quarter||'';
+    const cidade=a.city||a.town||a.municipality||'';
+    if(rua&&!document.getElementById('cliAddr').value.trim())document.getElementById('cliAddr').value=rua;
+    if(bairro){
+      const bairroSelect=document.getElementById('cliBairro');
+      const match=[...bairroSelect.options].find(o=>o.value&&o.value.toLowerCase()===bairro.toLowerCase());
+      if(match)bairroSelect.value=match.value;
+    }
+    if(rua||bairro){
+      res.innerHTML+=`<br>📍 <strong>Rua:</strong> ${rua||'—'}${bairro?' · <strong>Bairro:</strong> '+bairro:''}${cidade?' · '+cidade:''}`;
+    }
+  }catch(e){/* endereço automático é só um extra; falha silenciosa não impede o cálculo do frete */}
 }
 function applyDistanceFee(dist,res){
   const cfg=getCfg();
@@ -1330,10 +1346,11 @@ function mostrarPixFallback(cfg,motivo){
 }
 // ═══════ CARTÃO ONLINE (Payment Brick — embutido no site) ═══════
 let paymentBrickController=null,cartaoPedId=null;
+let cartaoTimeoutId=null;
 async function iniciarCartaoOnline(pedId,total,cfg){
-  document.getElementById('cartaoLoading').style.display='block';
-  document.getElementById('cartaoReady').style.display='none';
+  document.getElementById('cartaoReady').style.display='block';
   document.getElementById('cartaoErro').style.display='none';
+  document.getElementById('cartaoLoadingMsg').style.display='block';
   document.getElementById('cartaoAmount').textContent=fmt(total);
   cartaoPedId=pedId;
   if(!cfg.mpPublic){
@@ -1348,6 +1365,12 @@ async function iniciarCartaoOnline(pedId,total,cfg){
     mostrarCartaoErro('Não foi possível carregar o formulário de pagamento. Verifique sua conexão.');
     return;
   }
+  if(cartaoTimeoutId)clearTimeout(cartaoTimeoutId);
+  cartaoTimeoutId=setTimeout(()=>{
+    if(document.getElementById('cartaoLoadingMsg').style.display!=='none'){
+      mostrarCartaoErro('O formulário demorou demais para carregar. Verifique a Public Key nas configurações e tente novamente.');
+    }
+  },12000);
   try{
     const mp=new MercadoPago(cfg.mpPublic,{locale:'pt-BR'});
     const bricksBuilder=mp.bricks();
@@ -1360,8 +1383,8 @@ async function iniciarCartaoOnline(pedId,total,cfg){
       },
       callbacks:{
         onReady:()=>{
-          document.getElementById('cartaoLoading').style.display='none';
-          document.getElementById('cartaoReady').style.display='block';
+          if(cartaoTimeoutId)clearTimeout(cartaoTimeoutId);
+          document.getElementById('cartaoLoadingMsg').style.display='none';
         },
         onSubmit:({selectedPaymentMethod,formData})=>{
           return new Promise(async(resolve,reject)=>{
@@ -1404,15 +1427,21 @@ async function iniciarCartaoOnline(pedId,total,cfg){
             }
           });
         },
-        onError:(err)=>{console.error(err);}
+        onError:(err)=>{
+          console.error(err);
+          if(cartaoTimeoutId)clearTimeout(cartaoTimeoutId);
+          mostrarCartaoErro('Erro ao carregar o formulário de pagamento. Confira a Public Key.');
+        }
       }
     });
   }catch(e){
+    console.error(e);
+    if(cartaoTimeoutId)clearTimeout(cartaoTimeoutId);
     mostrarCartaoErro('Erro ao carregar o formulário de pagamento.');
   }
 }
 function mostrarCartaoErro(motivo){
-  document.getElementById('cartaoLoading').style.display='none';
+  if(cartaoTimeoutId)clearTimeout(cartaoTimeoutId);
   document.getElementById('cartaoReady').style.display='none';
   document.getElementById('cartaoErro').style.display='block';
   document.getElementById('cartaoErroMsg').textContent=motivo;
@@ -1542,7 +1571,7 @@ function openOverlay(id){
   if(id==='horarioOverlay')openHorarioModal();
   if(id==='avalOverlay')openAvalModal();
 }
-function closeOverlay(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';if(id==='pixOverlay')pararPollingPix();if(id==='cartaoOverlay'&&paymentBrickController){try{paymentBrickController.unmount();}catch(e){}paymentBrickController=null;}}
+function closeOverlay(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';if(id==='pixOverlay')pararPollingPix();if(id==='cartaoOverlay'){if(cartaoTimeoutId)clearTimeout(cartaoTimeoutId);if(paymentBrickController){try{paymentBrickController.unmount();}catch(e){}paymentBrickController=null;}}}
 function closeIfOut(e,id){if(e.target===document.getElementById(id))closeOverlay(id);}
 function openHorarioModal(){
   const h=getHorarios();
